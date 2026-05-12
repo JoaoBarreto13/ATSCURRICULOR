@@ -7,6 +7,7 @@ import { ScoreCard } from '@/components/ScoreCard';
 import { IssuesList } from '@/components/IssuesList';
 import { CorrectedResume } from '@/components/CorrectedResume';
 import { DownloadButton } from '@/components/DownloadButton';
+import { JobMatchAnalyzer } from '@/components/JobMatchAnalyzer';
 
 export default function ResultPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -56,6 +57,8 @@ export default function ResultPage() {
         <CorrectedResume extractedData={result.extractedData} correctedResume={result.correctedResume} />
 
         <DownloadButton analysisResult={result} />
+
+        <JobMatchAnalyzer analysisResult={result} />
 
       </div>
     </main>

@@ -195,6 +195,8 @@ function normalizeAnalysis(raw: PartialAnalysis): AnalysisResult {
       phone: normalizeString(extractedData.phone),
       linkedin: extractedData.linkedin === null ? null : normalizeString(extractedData.linkedin),
       location: normalizeString(extractedData.location),
+      birthDate: normalizeString(extractedData.birthDate),
+      age: typeof extractedData.age === 'number' ? extractedData.age : undefined,
       summary: normalizeString(extractedData.summary),
       skills: normalizeArrayOfStrings(extractedData.skills),
       experience: normalizeExperience(extractedData.experience),

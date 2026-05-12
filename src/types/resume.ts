@@ -32,6 +32,8 @@ export interface ExtractedData {
   phone: string;
   linkedin: string | null;
   location: string;
+  birthDate?: string; // YYYY-MM-DD
+  age?: number;
   summary: string;
   skills: string[];
   experience: Experience[];
@@ -52,4 +54,33 @@ export interface AnalysisResult {
   extractedData: ExtractedData;
   correctedResume: CorrectedResume;
   generalFeedback: string;
+}
+
+/**
+ * Requisitos de uma vaga para matching
+ */
+export interface JobRequirement {
+  title: string;
+  requiredSkills: string[];
+  preferredSkills?: string[];
+  minExperienceYears?: number;
+  maxAge?: number;
+  minAge?: number;
+  educationLevel?: 'Técnico' | 'Bachelor' | 'Master' | 'PhD';
+  requiredLanguages?: Array<{ language: string; minLevel: string }>;
+}
+
+/**
+ * Resultado de compatibilidade entre currículo e vaga
+ */
+export interface JobMatchResult {
+  matchPercentage: number; // 0-100
+  matchedSkills: string[];
+  missingSkills: string[];
+  ageCompatible: boolean;
+  ageDetails?: string;
+  experienceYears: number;
+  educationMatch: boolean;
+  languageMatch: boolean;
+  recommendations: string[];
 }

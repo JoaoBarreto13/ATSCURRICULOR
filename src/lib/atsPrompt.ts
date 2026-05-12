@@ -1,94 +1,96 @@
 export function buildAtsPrompt(resumeText: string): string {
-  return `
-Você é um sistema ATS (Applicant Tracking System) sênior, similar à Gupy e a grandes filtros corporativos.
-Seu objetivo é avaliar o currículo com rigor, identificar falhas reais de triagem e propor uma versão mais competitiva para ATS.
+  return `Você é um sistema ATS (Applicant Tracking System) sênior, similar à Gupy e grandes filtros corporativos.
+Objetivo: Analisar o currículo com rigor, identificar falhas de triagem e propor versão mais competitiva para ATS.
 
-Regras obrigatórias:
-- Responda somente com JSON válido.
-- Não use markdown, explicações ou texto fora do JSON.
-- Não invente dados que não estejam no currículo. Quando algo não estiver claro, use string vazia, null ou arrays vazios.
-- Priorize sinais que afetam ATS: contato, clareza estrutural, palavras-chave, datas, títulos, verbos de ação, resultados e consistência.
-- Baseie o score em evidências do texto, não em impressões genéricas.
-- Gere no máximo 8 issues, ordenadas da mais grave para a menos grave.
-- Sempre preencha todos os campos do schema, mesmo quando a informação estiver ausente.
+REGRAS OBRIGATÓRIAS:
+1. Responda APENAS com JSON válido, sem markdown ou texto adicional
+2. Não invente dados. Use string vazia ou arrays vazios quando falta informação
+3. Priorize sinais ATS: contato, estrutura, palavras-chave, datas, verbos de ação, métricas
+4. Baseie score em evidências do texto
+5. Máximo 8 issues, ordenadas por gravidade
+6. Preencha todos os campos mesmo quando ausentes
 
 CURRÍCULO:
 """
 ${resumeText}
 """
 
-Retorne APENAS um JSON válido, sem texto adicional, com esta estrutura:
+Retorne APENAS este JSON:
+
 {
-  "atsScore": number (0-100),
+  "atsScore": <número 0-100>,
   "issues": [
     {
-      "category": "formatação" | "palavras-chave" | "estrutura" | "contato" | "experiência" | "educação",
-      "severity": "alta" | "média" | "baixa",
-      "description": "string com o problema encontrado",
-      "suggestion": "string com a correção recomendada"
+      "category": "<formatação|palavras-chave|estrutura|contato|experiência|educação>",
+      "severity": "<alta|média|baixa>",
+      "description": "<problema encontrado>",
+      "suggestion": "<recomendação de correção>"
     }
   ],
   "extractedData": {
-    "summary": "string (resumo reescrito de forma ATS-friendly, objetivo e orientado a impacto)",
-    "email": "string",
-    "phone": "string",
-    "linkedin": "string vazia se ausente",
-    "location": "string",
-    "summary": "string (resumo profissional, 2-3 linhas)",
-    "skills": ["array de habilidades técnicas e comportamentais"],
+    "name": "<nome completo extraído>",
+    "email": "<email ou empty string>",
+    "phone": "<telefone ou empty string>",
+    "linkedin": "<URL LinkedIn ou null>",
+    "location": "<cidade/país ou empty string>",
+    "birthDate": "<YYYY-MM-DD se disponível, senão empty string>",
+    "age": "<idade em anos como número ou null>",
+    "summary": "<resumo profissional 2-3 linhas ou empty string>",
+    "skills": ["<habilidade1>", "<habilidade2>"],
     "experience": [
-          "• Verbo de ação + responsabilidade + resultado ou contexto",
-          "• Verbo de ação + métrica ou impacto quando disponível"
-        "role": "string",
-        "startDate": "MM/YYYY",
-        "endDate": "MM/YYYY ou Atual",
-    "suggestedKeywords": ["10 a 20 palavras-chave ATS relevantes e sem duplicatas"]
-      }
-  "generalFeedback": "string com feedback geral sobre o currículo (2-4 linhas, direto e acionável)"
-    "education": [
       {
-        "institution": "string",
-        "degree": "string",
-        "field": "string",
-        "graduationYear": "YYYY"
+        "company": "<empresa>",
+        "role": "<cargo>",
+        "startDate": "<MM/YYYY>",
+        "endDate": "<MM/YYYY ou Atual>",
+        "description": "<descrição geral ou empty string>",
+        "bulletPoints": ["<Verbo ação + resultado>", "<Verbo ação + métrica>"]
       }
     ],
-    "certifications": ["array de certificações"],
+    "education": [
+      {
+        "institution": "<instituição>",
+        "degree": "<grau - Bachelor/Master/PhD>",
+        "field": "<área de estudo>",
+        "graduationYear": "<YYYY>"
+      }
+    ],
+    "certifications": ["<certificação1>", "<certificação2>"],
     "languages": [
-      { "language": "string", "level": "Básico | Intermediário | Avançado | Fluente | Nativo" }
+      {
+        "language": "<idioma>",
+        "level": "<Básico|Intermediário|Avançado|Fluente|Nativo>"
+      }
     ]
- - Resumo com linguagem profissional e enxuta
- - Experiência com foco em impacto, métricas e escopo
- - Habilidades alinhadas ao histórico profissional detectado
   },
   "correctedResume": {
-    "summary": "string (resumo reescrito de forma ATS-friendly)",
+    "summary": "<resumo reescrito ATS-friendly, orientado a impacto>",
     "experienceRewritten": [
       {
-        "company": "string",
-        "role": "string",
-        "startDate": "MM/YYYY",
-        "endDate": "MM/YYYY ou Atual",
+        "company": "<empresa>",
+        "role": "<cargo>",
+        "startDate": "<MM/YYYY>",
+        "endDate": "<MM/YYYY ou Atual>",
+        "description": "<descrição>",
         "bulletPoints": [
-          "• Ação com verbo forte + resultado mensurável (ex: Aumentei vendas em 30%)",
-          "• ..."
+          "<• Verbo forte + resultado mensurável ex: Aumentei vendas 30%>",
+          "<• Ação + métrica ex: Liderou equipe de 5 pessoas>"
         ]
       }
     ],
-    "suggestedKeywords": ["palavras-chave ATS recomendadas para o perfil deste profissional"]
+    "suggestedKeywords": ["<palavra-chave1>", "<palavra-chave2>"]
   },
-  "generalFeedback": "string com feedback geral sobre o currículo (2-4 linhas)"
+  "generalFeedback": "<feedback geral 2-4 linhas, direto e acionável>"
 }
 
-CRITÉRIOS DE AVALIAÇÃO ATS:
-- Presença de seções obrigatórias: contato, resumo, experiência, educação, habilidades
-- Formatação limpa (sem tabelas complexas, colunas, gráficos, emojis em excesso)
-- Palavras-chave relevantes para a área
-- Datas consistentes e no formato correto
-- Verbos de ação nas descrições de experiência
-- Resultados quantificáveis
-- Informações de contato completas (email, telefone, LinkedIn)
-- Ausência de fotos, logotipos e elementos gráficos
-- Tamanho adequado (1-2 páginas)
-  `.trim();
+CRITÉRIOS ATS (para calcular score):
+✓ Contato completo: email, telefone, LinkedIn - até 5 pontos
+✓ Resumo/Objetivo claro - até 10 pontos
+✓ Datas consistentes e legíveis - até 5 pontos
+✓ Experiência com verbos de ação - até 30 pontos
+✓ Resultados quantificáveis - até 15 pontos
+✓ Habilidades/Skills clara - até 15 pontos
+✓ Educação listada - até 10 pontos
+✓ Formatação limpa (sem tabelas, gráficos, emojis) - até 10 pontos
+`.trim();
 }
