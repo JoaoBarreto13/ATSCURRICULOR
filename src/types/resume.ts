@@ -84,3 +84,8 @@ export interface JobMatchResult {
   languageMatch: boolean;
   recommendations: string[];
 }
+
+export interface JobDescriptionAnalysis {
+  summary: string;
+  jobRequirement: JobRequirement;
+}

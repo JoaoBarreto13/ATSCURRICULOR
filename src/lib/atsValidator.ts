@@ -6,6 +6,14 @@
 import { AnalysisResult, JobRequirement } from '@/types/resume';
 import { matchResumeWithJob, calculateExperienceYears } from './jobMatcher';
 
+const OPEN_ENDED_DATE_VALUES = new Set([
+  'atual',
+  'presente',
+  'atualmente',
+  'current',
+  'present',
+]);
+
 /**
  * Valida se o currículo atende aos critérios de ATS básicos
  */
@@ -46,12 +54,33 @@ export function validateATSCompatibility(result: AnalysisResult): {
   } else {
     // Validar datas de experiência
     extractedData.experience.forEach((exp, idx) => {
+      const startDate = parseDate(exp.startDate);
+      const endDate = parseExperienceEndDate(exp.endDate);
+
       if (!exp.startDate || exp.startDate.trim() === '') {
         warnings.push(`Experiência ${idx + 1}: data de início faltando`);
       }
+
       if (!exp.endDate || exp.endDate.trim() === '') {
         warnings.push(`Experiência ${idx + 1}: data de término faltando`);
+      } else if (!endDate) {
+        warnings.push(`Experiência ${idx + 1}: data de término inválida (${exp.endDate})`);
       }
+
+      if (startDate && endDate && endDate < startDate) {
+        warnings.push(`Experiência ${idx + 1}: datas invertidas (${exp.startDate} → ${exp.endDate})`);
+      }
+
+      if (endDate) {
+        const today = new Date();
+        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const normalizedEnd = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+        if (normalizedEnd > currentMonth && !isOpenEndedDate(exp.endDate)) {
+          warnings.push(`Experiência ${idx + 1}: data de término futura (${exp.endDate})`);
+        }
+      }
+
       if (!exp.bulletPoints || exp.bulletPoints.length === 0) {
         recommendations.push(
           `Experiência em ${exp.company || exp.role}: Adicionar bullet points com resultados mensuráveis`,
@@ -63,6 +92,21 @@ export function validateATSCompatibility(result: AnalysisResult): {
   // Validar educação
   if (!extractedData.education || extractedData.education.length === 0) {
     warnings.push('Educação/formação não encontrada');
+  } else {
+    // Verifica ano de graduação futuro ou inválido
+    extractedData.education.forEach((edu, idx) => {
+      if (edu.graduationYear) {
+        const raw = edu.graduationYear.trim();
+        const yearMatch = raw.match(/^(\d{4})$/) || raw.match(/(\d{4})/);
+        if (yearMatch) {
+          const year = parseInt(yearMatch[1]);
+          const currentYear = new Date().getFullYear();
+          if (year > currentYear) {
+            warnings.push(`Educação ${idx + 1}: ano de graduação no futuro (${edu.graduationYear})`);
+          }
+        }
+      }
+    });
   }
 
   // Validar skills
@@ -80,6 +124,51 @@ export function validateATSCompatibility(result: AnalysisResult): {
     warnings,
     recommendations,
   };
+}
+
+function isOpenEndedDate(value: string | undefined): boolean {
+  if (!value) return false;
+  return OPEN_ENDED_DATE_VALUES.has(value.trim().toLowerCase());
+}
+
+function parseExperienceEndDate(dateStr: string | undefined): Date | null {
+  if (!dateStr) return null;
+
+  const normalizedValue = dateStr.trim().toLowerCase();
+  if (OPEN_ENDED_DATE_VALUES.has(normalizedValue)) {
+    return new Date();
+  }
+
+  return parseDate(dateStr);
+}
+
+function parseDate(dateStr: string | undefined): Date | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+
+  const raw = dateStr.trim();
+  // Remove prefix non-digit characters (ex: em dash, bullets)
+  const cleaned = raw.replace(/^\D+/, '').trim();
+
+  const mmyyyyMatch = cleaned.match(/^(\d{2})\/(\d{4})$/);
+  if (mmyyyyMatch) {
+    const [, month, year] = mmyyyyMatch;
+    return new Date(parseInt(year), parseInt(month) - 1, 1);
+  }
+
+  const yyyymmddMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (yyyymmddMatch) {
+    const [, year, month, day] = yyyymmddMatch;
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  }
+
+  const yyyyMatch = cleaned.match(/^(\d{4})$/);
+  if (yyyyMatch) {
+    const year = parseInt(yyyyMatch[1]);
+    return new Date(year, 0, 1);
+  }
+
+  const parsed = new Date(cleaned);
+  return !isNaN(parsed.getTime()) ? parsed : null;
 }
 
 /**

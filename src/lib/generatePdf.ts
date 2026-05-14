@@ -5,6 +5,15 @@ import { AnalysisResult } from '@/types/resume';
  */
 function generateHtml(data: AnalysisResult): string {
   const { extractedData, correctedResume } = data;
+  const summary = correctedResume.summary || extractedData.summary;
+  const experienceItems =
+    correctedResume.experienceRewritten.length > 0
+      ? correctedResume.experienceRewritten
+      : extractedData.experience;
+  const hasEducation = extractedData.education.length > 0;
+  const hasSkills = extractedData.skills.length > 0;
+  const hasCertifications = extractedData.certifications.length > 0;
+  const hasLanguages = extractedData.languages.length > 0;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -51,10 +60,11 @@ function generateHtml(data: AnalysisResult): string {
   </div>
 
   <h2>Resumo Profissional</h2>
-  <p>${escapeHtml(correctedResume.summary || extractedData.summary)}</p>
+  <p>${escapeHtml(summary || 'Resumo não identificado na extração do currículo.')}</p>
 
   <h2>Experiência Profissional</h2>
-  ${correctedResume.experienceRewritten
+  ${experienceItems.length > 0
+    ? experienceItems
     .map(
       (exp) => `
     <div class="job">
@@ -66,33 +76,36 @@ function generateHtml(data: AnalysisResult): string {
     </div>
   `
     )
-    .join('')}
+    .join('')
+    : '<p class="section-text">Experiência não identificada na extração do currículo.</p>'}
 
   <h2>Educação</h2>
-  ${extractedData.education
+  ${hasEducation
+    ? extractedData.education
     .map(
       (edu) =>
         `<p><strong>${escapeHtml(edu.degree)} em ${escapeHtml(edu.field)}</strong> — ${escapeHtml(edu.institution)} (${escapeHtml(edu.graduationYear)})</p>`
     )
-    .join('')}
+    .join('')
+    : '<p class="section-text">Educação não identificada na extração do currículo.</p>'}
 
-  ${extractedData.skills.length > 0
+  ${hasSkills
     ? `
     <h2>Habilidades</h2>
     <div class="skills-list">
       ${extractedData.skills.map((s) => `<span class="skill">${escapeHtml(s)}</span>`).join('')}
     </div>
   `
-    : ''}
+    : '<h2>Habilidades</h2><p class="section-text">Habilidades não identificadas na extração do currículo.</p>'}
 
-  ${extractedData.certifications.length > 0
+  ${hasCertifications
     ? `
     <h2>Certificações</h2>
     ${extractedData.certifications.map((c) => `<p>${escapeHtml(c)}</p>`).join('')}
   `
     : ''}
 
-  ${extractedData.languages.length > 0
+  ${hasLanguages
     ? `
     <h2>Idiomas</h2>
     ${extractedData.languages.map((l) => `<p>${escapeHtml(l.language)}: ${escapeHtml(l.level)}</p>`).join('')}

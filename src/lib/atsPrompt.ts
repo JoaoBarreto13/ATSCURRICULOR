@@ -9,6 +9,8 @@ REGRAS OBRIGATÓRIAS:
 4. Baseie score em evidências do texto
 5. Máximo 8 issues, ordenadas por gravidade
 6. Preencha todos os campos mesmo quando ausentes
+7. Para experiências em andamento, use "Atual" ou "Presente" no campo 'endDate'
+8. Nunca invente datas futuras; se houver ambiguidade, normalize para a última data válida
 
 CURRÍCULO:
 """

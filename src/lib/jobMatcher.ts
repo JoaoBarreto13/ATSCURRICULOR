@@ -4,6 +4,14 @@ import {
   JobMatchResult,
 } from '@/types/resume';
 
+const OPEN_ENDED_DATE_VALUES = new Set([
+  'atual',
+  'presente',
+  'atualmente',
+  'current',
+  'present',
+]);
+
 /**
  * Calcula os anos de experiência baseado no histórico de empregos
  */
@@ -13,19 +21,16 @@ export function calculateExperienceYears(extractedData: ExtractedData): number {
   }
 
   let totalMonths = 0;
+  const today = new Date();
 
   extractedData.experience.forEach((exp) => {
-    const startDate = parseDate(exp.startDate);
-    const endDate =
-      exp.endDate?.toLowerCase() === 'atual'
-        ? new Date()
-        : parseDate(exp.endDate);
+    const normalized = normalizeExperienceRange(exp.startDate, exp.endDate, today);
 
-    if (startDate && endDate) {
-      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const diffMonths = Math.ceil(diffDays / 30.44);
-      totalMonths += diffMonths;
+    if (normalized.startDate && normalized.endDate) {
+      const diffMonths = getMonthDifference(normalized.startDate, normalized.endDate);
+      if (diffMonths > 0) {
+        totalMonths += diffMonths;
+      }
     }
   });
 
@@ -61,23 +66,72 @@ export function calculateAge(birthDate: string | undefined): number | null {
 function parseDate(dateStr: string): Date | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
 
+  const raw = dateStr.trim();
+  const normalizedValue = raw.toLowerCase();
+  if (OPEN_ENDED_DATE_VALUES.has(normalizedValue)) return new Date();
+
+  // Remove prefix non-digit characters (ex: em dash, bullets)
+  const cleaned = raw.replace(/^\D+/, '').trim();
+
   // Formato MM/YYYY
-  const mmyyyyMatch = dateStr.match(/^(\d{2})\/(\d{4})$/);
+  const mmyyyyMatch = cleaned.match(/^(\d{2})\/(\d{4})$/);
   if (mmyyyyMatch) {
     const [, month, year] = mmyyyyMatch;
     return new Date(parseInt(year), parseInt(month) - 1, 1);
   }
 
   // Formato YYYY-MM-DD
-  const yyyymmddMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const yyyymmddMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (yyyymmddMatch) {
     const [, year, month, day] = yyyymmddMatch;
     return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
   }
 
+  // Formato AAAA (ano apenas)
+  const yyyyMatch = cleaned.match(/^(\d{4})$/);
+  if (yyyyMatch) {
+    const year = parseInt(yyyyMatch[1]);
+    return new Date(year, 0, 1);
+  }
+
   // Tenta parse normal
-  const parsed = new Date(dateStr);
+  const parsed = new Date(cleaned);
   return !isNaN(parsed.getTime()) ? parsed : null;
+}
+
+function normalizeExperienceRange(
+  startDate: string,
+  endDate: string,
+  today: Date,
+): { startDate: Date | null; endDate: Date | null } {
+  const start = parseDate(startDate);
+  let end = parseDate(endDate);
+
+  if (end && end > today) {
+    end = today;
+  }
+
+  if (start && end && end < start) {
+    return {
+      startDate: end,
+      endDate: start,
+    };
+  }
+
+  return {
+    startDate: start,
+    endDate: end,
+  };
+}
+
+function getMonthDifference(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+  const yearDiff = end.getFullYear() - start.getFullYear();
+  const monthDiff = end.getMonth() - start.getMonth();
+
+  return Math.max(0, yearDiff * 12 + monthDiff + 1);
 }
 
 /**
@@ -236,6 +290,7 @@ export function matchResumeWithJob(
 
   // 5. Verificar idiomas (10%)
   let languageScore = 0;
+  let languageMatch = true;
   if (jobRequirement.requiredLanguages && jobRequirement.requiredLanguages.length > 0) {
     const levelOrder = ['Básico', 'Intermediário', 'Avançado', 'Fluente', 'Nativo'];
     const matchedLanguages = jobRequirement.requiredLanguages.filter((req) => {
@@ -250,10 +305,12 @@ export function matchResumeWithJob(
       return candLevelIdx >= reqLevelIdx;
     });
 
+    languageMatch = matchedLanguages.length === jobRequirement.requiredLanguages.length;
     languageScore =
       (matchedLanguages.length / jobRequirement.requiredLanguages.length) * 10;
   } else {
     languageScore = 10;
+    languageMatch = true;
   }
 
   const matchPercentage = Math.round(
@@ -293,9 +350,7 @@ export function matchResumeWithJob(
     ageDetails,
     experienceYears,
     educationMatch,
-    languageMatch:
-      !jobRequirement.requiredLanguages ||
-      jobRequirement.requiredLanguages.length === 0,
+    languageMatch,
     recommendations,
   };
 }

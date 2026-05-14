@@ -259,6 +259,16 @@ async function requestGemini(prompt: string): Promise<string> {
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY não configurada no ambiente.');
   }
+  // garantir intervalo mínimo entre requisições para evitar RPM (ex: 15 req/min -> ~4100ms)
+  const MIN_INTERVAL_MS = 4100;
+  // variável de módulo para rastrear última requisição
+  const _reqRef = requestGemini as unknown as { _lastRequestAt?: number };
+  _reqRef._lastRequestAt = _reqRef._lastRequestAt || 0;
+  const lastAt = (_reqRef._lastRequestAt || 0) as number;
+  const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastAt));
+  if (wait > 0) {
+    await new Promise((resolve) => setTimeout(resolve, wait));
+  }
 
   const response = await fetch(
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' +
@@ -393,6 +403,9 @@ async function requestGemini(prompt: string): Promise<string> {
         }),
     }
   );
+
+  // registrar hora da requisição
+  (_reqRef._lastRequestAt as number) = Date.now();
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
