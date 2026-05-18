@@ -19,3 +19,13 @@ coverage
 *.pem
 *.key
 .env.local
+.env.*
+.envrc
+.secrets
+credentials.json
+service-account.json
+.netrc
+.aws/credentials
+*.crt
+*.p12
+*.pfx
