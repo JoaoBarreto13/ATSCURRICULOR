@@ -3,14 +3,11 @@ import {
   JobRequirement,
   JobMatchResult,
 } from '@/types/resume';
-
-const OPEN_ENDED_DATE_VALUES = new Set([
-  'atual',
-  'presente',
-  'atualmente',
-  'current',
-  'present',
-]);
+import {
+  isOpenEndedDate,
+  normalizeExperienceDateRange,
+  calculateMonthsDifference,
+} from './dateValidator';
 
 /**
  * Calcula os anos de experiência baseado no histórico de empregos
@@ -24,17 +21,20 @@ export function calculateExperienceYears(extractedData: ExtractedData): number {
   const today = new Date();
 
   extractedData.experience.forEach((exp) => {
-    const normalized = normalizeExperienceRange(exp.startDate, exp.endDate, today);
+    const normalized = normalizeExperienceDateRange(exp.startDate, exp.endDate);
 
     if (normalized.startDate && normalized.endDate) {
-      const diffMonths = getMonthDifference(normalized.startDate, normalized.endDate);
+      const diffMonths = calculateMonthsDifference(
+        normalized.startDate,
+        normalized.endDate,
+      );
       if (diffMonths > 0) {
         totalMonths += diffMonths;
       }
     }
   });
 
-  return Math.round(totalMonths / 12 * 10) / 10; // Retorna anos com 1 decimal
+  return Math.round((totalMonths / 12) * 10) / 10; // Retorna anos com 1 decimal
 }
 
 /**
@@ -43,8 +43,27 @@ export function calculateExperienceYears(extractedData: ExtractedData): number {
 export function calculateAge(birthDate: string | undefined): number | null {
   if (!birthDate) return null;
 
-  const birth = parseDate(birthDate);
-  if (!birth) return null;
+  // Parsear data de nascimento manualmente
+  const raw = birthDate.trim();
+  let birth: Date | null = null;
+
+  // Tenta formato YYYY-MM-DD
+  const yyyymmddMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (yyyymmddMatch) {
+    const [, year, month, day] = yyyymmddMatch;
+    birth = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  }
+
+  // Tenta formato DD/MM/YYYY
+  if (!birth) {
+    const ddmmyyyyMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, day, month, year] = ddmmyyyyMatch;
+      birth = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+  }
+
+  if (!birth || isNaN(birth.getTime())) return null;
 
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
@@ -57,81 +76,7 @@ export function calculateAge(birthDate: string | undefined): number | null {
     age--;
   }
 
-  return age;
-}
-
-/**
- * Converte strings de data em formato MM/YYYY ou YYYY-MM-DD para objeto Date
- */
-function parseDate(dateStr: string): Date | null {
-  if (!dateStr || typeof dateStr !== 'string') return null;
-
-  const raw = dateStr.trim();
-  const normalizedValue = raw.toLowerCase();
-  if (OPEN_ENDED_DATE_VALUES.has(normalizedValue)) return new Date();
-
-  // Remove prefix non-digit characters (ex: em dash, bullets)
-  const cleaned = raw.replace(/^\D+/, '').trim();
-
-  // Formato MM/YYYY
-  const mmyyyyMatch = cleaned.match(/^(\d{2})\/(\d{4})$/);
-  if (mmyyyyMatch) {
-    const [, month, year] = mmyyyyMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, 1);
-  }
-
-  // Formato YYYY-MM-DD
-  const yyyymmddMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (yyyymmddMatch) {
-    const [, year, month, day] = yyyymmddMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-  }
-
-  // Formato AAAA (ano apenas)
-  const yyyyMatch = cleaned.match(/^(\d{4})$/);
-  if (yyyyMatch) {
-    const year = parseInt(yyyyMatch[1]);
-    return new Date(year, 0, 1);
-  }
-
-  // Tenta parse normal
-  const parsed = new Date(cleaned);
-  return !isNaN(parsed.getTime()) ? parsed : null;
-}
-
-function normalizeExperienceRange(
-  startDate: string,
-  endDate: string,
-  today: Date,
-): { startDate: Date | null; endDate: Date | null } {
-  const start = parseDate(startDate);
-  let end = parseDate(endDate);
-
-  if (end && end > today) {
-    end = today;
-  }
-
-  if (start && end && end < start) {
-    return {
-      startDate: end,
-      endDate: start,
-    };
-  }
-
-  return {
-    startDate: start,
-    endDate: end,
-  };
-}
-
-function getMonthDifference(startDate: Date, endDate: Date): number {
-  const start = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-  const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-
-  const yearDiff = end.getFullYear() - start.getFullYear();
-  const monthDiff = end.getMonth() - start.getMonth();
-
-  return Math.max(0, yearDiff * 12 + monthDiff + 1);
+  return age > 0 && age < 150 ? age : null;
 }
 
 /**

@@ -54,6 +54,8 @@ export interface AnalysisResult {
   extractedData: ExtractedData;
   correctedResume: CorrectedResume;
   generalFeedback: string;
+  validationWarnings?: string[];
+  validationRecommendations?: string[];
 }
 
 /**

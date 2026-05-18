@@ -1,13 +1,6 @@
 import { buildJobDescriptionPrompt } from './jobDescriptionPrompt';
+import { requestChatCompletion } from './aiChatCompletion';
 import { JobDescriptionAnalysis, JobRequirement } from '@/types/resume';
-
-type DeepSeekChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-};
 
 function normalizeString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback;
@@ -105,58 +98,11 @@ Schema final:
 }`.trim();
 }
 
-async function requestDeepSeek(prompt: string): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('DEEPSEEK_API_KEY não configurada no ambiente.');
-  }
-
-  const model = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-chat';
-
-  // garantir intervalo mínimo entre requisições para evitar RPM (ex: 15 req/min -> ~4100ms)
-  const MIN_INTERVAL_MS = 4100;
-  const _reqRef = requestDeepSeek as unknown as { _lastRequestAt?: number };
-  _reqRef._lastRequestAt = _reqRef._lastRequestAt || 0;
-  const lastAt = (_reqRef._lastRequestAt || 0) as number;
-  const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastAt));
-  if (wait > 0) {
-    await new Promise((resolve) => setTimeout(resolve, wait));
-  }
-
-  const response = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.15,
-      max_tokens: 4096,
-      stream: false,
-    }),
-  });
-
-  (_reqRef._lastRequestAt as number) = Date.now();
-
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(
-      `Falha ao consultar DeepSeek (${response.status}). ${errorBody || 'Sem detalhes adicionais.'}`
-    );
-  }
-
-  const payload = (await response.json()) as DeepSeekChatCompletionResponse;
-  return payload.choices?.[0]?.message?.content?.trim() ?? '';
-}
-
 export async function analyzeJobDescriptionWithDeepSeek(
   description: string,
 ): Promise<JobDescriptionAnalysis> {
   const prompt = buildJobDescriptionPrompt(description);
-  const rawResponse = await requestDeepSeek(prompt);
+  const rawResponse = await requestChatCompletion(prompt);
 
   if (!rawResponse) {
     throw new Error('A IA não retornou conteúdo para a vaga.');
@@ -169,7 +115,7 @@ export async function analyzeJobDescriptionWithDeepSeek(
       jobRequirement: normalizeJobRequirement(parsed.jobRequirement),
     };
   } catch {
-    const repaired = await requestDeepSeek(buildRepairPrompt(rawResponse));
+    const repaired = await requestChatCompletion(buildRepairPrompt(rawResponse));
     const parsed = JSON.parse(extractJsonText(repaired)) as Record<string, unknown>;
 
     return {

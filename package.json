@@ -10,7 +10,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.0.1",
     "@react-pdf/renderer": "^3.4.4",
     "clsx": "^2.1.0",
     "formidable": "^3.5.1",

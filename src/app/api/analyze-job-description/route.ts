@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeJobDescriptionWithGemini } from '@/lib/analyzeJobDescriptionWithGemini';
+import { analyzeJobDescriptionWithDeepSeek } from '@/lib/analyzeJobDescriptionWithDeepSeek';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cole a descrição da vaga para continuar.' }, { status: 400 });
     }
 
-    const analysis = await analyzeJobDescriptionWithGemini(description);
+    const analysis = await analyzeJobDescriptionWithDeepSeek(description);
 
     return NextResponse.json(analysis, { status: 200 });
   } catch (error) {
@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
 
     const message = error instanceof Error ? error.message : 'Erro desconhecido ao analisar a vaga.';
 
-    if (message.includes('GEMINI_API_KEY')) {
+    if (message.includes('DEEPSEEK_API_KEY')) {
       return NextResponse.json(
-        { error: 'A integração com a IA não está configurada. Defina GEMINI_API_KEY no .env.local.' },
+        { error: 'A integração com a IA não está configurada. Defina DEEPSEEK_API_KEY no .env.local.' },
         { status: 500 },
       );
     }

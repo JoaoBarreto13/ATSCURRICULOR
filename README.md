@@ -1,6 +1,6 @@
 # ATSCURRICULOR
 
-ATS Resume Analyzer em Next.js para analisar currículos em PDF, extrair dados com Google Gemini, gerar um currículo corrigido e exportar um PDF ATS-friendly.
+ATS Resume Analyzer em Next.js para analisar currículos em PDF, extrair dados com OpenRouter + DeepSeek, gerar um currículo corrigido e exportar um PDF ATS-friendly.
 
 ## Status do projeto
 
@@ -8,7 +8,7 @@ O projeto já está funcional e com a base principal pronta:
 
 - Upload de currículo em PDF.
 - Extração de texto do PDF no backend.
-- Análise com Google Gemini.
+- Análise com OpenRouter usando DeepSeek, com fallback para DeepSeek direto.
 - Score ATS com lista de problemas e sugestões.
 - Geração de currículo corrigido.
 - Preview do resultado na interface.
@@ -25,7 +25,7 @@ O projeto já está funcional e com a base principal pronta:
 
 - Upload de arquivos `.pdf` com validação de tipo e tamanho.
 - Extração de texto com `pdf-parse`.
-- Análise estruturada com Google Gemini.
+- Análise estruturada com DeepSeek.
 - Normalização dos dados retornados pela IA.
 - Score ATS de 0 a 100.
 - Lista de issues por categoria e severidade.
@@ -44,7 +44,7 @@ O projeto já está funcional e com a base principal pronta:
 - TypeScript
 - React 18
 - Tailwind CSS
-- Google Gemini (`@google/genai`)
+- OpenRouter como provedor principal, com fallback opcional para DeepSeek direto
 - `pdf-parse`
 - `puppeteer`
 - `react-dropzone`
@@ -53,7 +53,7 @@ O projeto já está funcional e com a base principal pronta:
 
 1. O usuário envia um PDF na página inicial.
 2. A rota `/api/analyze` extrai o texto do arquivo.
-3. O texto é enviado ao Gemini com um prompt estruturado.
+3. O texto é enviado ao provedor configurado no ambiente com um prompt estruturado.
 4. A resposta é normalizada para o formato interno do projeto.
 5. A tela de resultado mostra score, issues, resumo corrigido e preview.
 6. O botão de download chama `/api/generate-pdf` para gerar o PDF final.
@@ -68,7 +68,7 @@ Recebe um `FormData` com o arquivo `resume` em PDF.
 Responsabilidades:
 - validar tipo e tamanho do arquivo
 - extrair texto do PDF
-- chamar o Gemini
+- chamar o DeepSeek
 - retornar o `AnalysisResult`
 
 ### `POST /api/generate-pdf`
@@ -94,7 +94,7 @@ src/
 		JobMatchAnalyzer.tsx
 	lib/
 		extractPdfText.ts
-		analyzeWithGemini.ts
+		analyzeWithDeepSeek.ts
 		atsPrompt.ts
 		generatePdf.ts
 		jobMatcher.ts
@@ -108,7 +108,13 @@ src/
 Crie um arquivo `.env.local` na raiz com:
 
 ```env
-GEMINI_API_KEY=sua_chave_aqui
+OPENROUTER_API_KEY=sua_chave_aqui
+OPENROUTER_MODEL=deepseek/deepseek-v4-flash
+OPENROUTER_SITE_URL=http://localhost:3000
+OPENROUTER_APP_NAME=ATSCURRICULOR
+# Opcional: use só se quiser fallback direto para DeepSeek
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-flash
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
@@ -131,7 +137,7 @@ Depois acesse `http://localhost:3000`.
 
 ## Observações importantes
 
-- O projeto usa Google Gemini, não Anthropic Claude.
+- O projeto usa OpenRouter com DeepSeek quando configurado, e pode cair para DeepSeek direto se necessário.
 - O PDF final é gerado com HTML simples para manter legibilidade por ATS.
 - O componente de compatibilidade com vagas usa os dados extraídos do currículo e os requisitos informados manualmente.
 - A comparação por idade depende de a idade ou data de nascimento estar disponível no currículo e de a vaga informar faixa etária.

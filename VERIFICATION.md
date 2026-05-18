@@ -179,7 +179,7 @@ logJobMatching(result, job)
 1. **Upload PDF** → [page.tsx](src/app/page.tsx)
 2. **Análise** → [/api/analyze](src/app/api/analyze/route.ts)
    - Extrai texto com idade/birthDate
-   - Chama Gemini com novo schema
+  - Chama DeepSeek com novo schema
    - Normaliza dados
 3. **Resultado** → [result/page.tsx](src/app/result/page.tsx)
    - Mostra score ATS
