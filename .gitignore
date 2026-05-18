@@ -18,3 +18,4 @@ coverage
 *.pdf
 *.pem
 *.key
+.env.local
