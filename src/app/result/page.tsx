@@ -10,7 +10,7 @@ import { DownloadButton } from '@/components/DownloadButton';
 import { JobMatchAnalyzer } from '@/components/JobMatchAnalyzer';
 
 export default function ResultPage() {
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -21,7 +21,7 @@ export default function ResultPage() {
       return;
     }
     try {
-      setResult(JSON.parse(stored));
+      setAnalysisResult(JSON.parse(stored));
     } catch {
       sessionStorage.removeItem('atsResult');
       router.push('/');
@@ -31,6 +31,12 @@ export default function ResultPage() {
     }
   }, [router]);
 
+  useEffect(() => {
+    if (analysisResult) {
+      sessionStorage.setItem('atsResult', JSON.stringify(analysisResult));
+    }
+  }, [analysisResult]);
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
@@ -39,7 +45,7 @@ export default function ResultPage() {
     );
   }
 
-  if (!result) return null;
+  if (!analysisResult) return null;
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -50,15 +56,15 @@ export default function ResultPage() {
           <button onClick={() => router.push('/')} className="text-sm text-blue-600 hover:underline">← Analisar outro currículo</button>
         </div>
 
-        <ScoreCard score={result.atsScore} feedback={result.generalFeedback} />
+        <ScoreCard score={analysisResult.atsScore} feedback={analysisResult.generalFeedback} />
 
-        <IssuesList issues={result.issues} />
+        <IssuesList issues={analysisResult.issues} />
 
-        <CorrectedResume extractedData={result.extractedData} correctedResume={result.correctedResume} />
+        <CorrectedResume analysisResult={analysisResult} onChange={setAnalysisResult} />
 
-        <DownloadButton analysisResult={result} />
+        <DownloadButton analysisResult={analysisResult} />
 
-        <JobMatchAnalyzer analysisResult={result} />
+        <JobMatchAnalyzer analysisResult={analysisResult} />
 
       </div>
     </main>

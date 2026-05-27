@@ -5,6 +5,7 @@
 
 import { AnalysisResult, JobRequirement } from '@/types/resume';
 import { matchResumeWithJob, calculateExperienceYears } from './jobMatcher';
+import { getResumeSkills } from './resumeSkills';
 import {
   isOpenEndedDate,
   validateDateRealism,
@@ -117,7 +118,9 @@ export function validateATSCompatibility(result: AnalysisResult): {
   }
 
   // Validar skills
-  if (!extractedData.skills || extractedData.skills.length < 3) {
+  const resumeSkills = getResumeSkills(result);
+
+  if (resumeSkills.length < 3) {
     recommendations.push('Adicionar mais skills técnicas à seção de habilidades');
   }
 

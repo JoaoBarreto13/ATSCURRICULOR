@@ -29,3 +29,7 @@ service-account.json
 *.crt
 *.p12
 *.pfx
+
+# Local temporary output and test artifacts
+tmp/
+.cache/

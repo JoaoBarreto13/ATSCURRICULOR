@@ -1,9 +1,10 @@
 import { AnalysisResult } from '@/types/resume';
+import { getResumeSkills } from './resumeSkills';
 
 /**
  * Gera HTML ATS-friendly a partir dos dados do currículo corrigido
  */
-function generateHtml(data: AnalysisResult): string {
+export function generateHtml(data: AnalysisResult): string {
   const { extractedData, correctedResume } = data;
   const summary = correctedResume.summary || extractedData.summary;
   const experienceItems =
@@ -11,7 +12,8 @@ function generateHtml(data: AnalysisResult): string {
       ? correctedResume.experienceRewritten
       : extractedData.experience;
   const hasEducation = extractedData.education.length > 0;
-  const hasSkills = extractedData.skills.length > 0;
+  const skills = getResumeSkills(data);
+  const hasSkills = skills.length > 0;
   const hasCertifications = extractedData.certifications.length > 0;
   const hasLanguages = extractedData.languages.length > 0;
 
@@ -33,7 +35,6 @@ function generateHtml(data: AnalysisResult): string {
     .contact { font-size: 10pt; color: #333; margin-bottom: 16px; }
     h2 {
       font-size: 12pt;
-      text-transform: uppercase;
       letter-spacing: 1px;
       border-bottom: 1.5px solid #111;
       padding-bottom: 3px;
@@ -45,8 +46,8 @@ function generateHtml(data: AnalysisResult): string {
     .job-meta { font-size: 10pt; color: #444; margin-bottom: 4px; }
     ul { padding-left: 18px; }
     li { margin-bottom: 3px; line-height: 1.5; }
-    .skills-list { display: flex; flex-wrap: wrap; gap: 6px; }
-    .skill { background: #f0f0f0; padding: 2px 8px; border-radius: 3px; font-size: 10pt; }
+    .skills-list { margin: 0; padding-left: 18px; }
+    .skill-item { margin-bottom: 4px; font-size: 10pt; }
     .section-text { font-size: 10pt; color: #333; }
   </style>
 </head>
@@ -92,9 +93,9 @@ function generateHtml(data: AnalysisResult): string {
   ${hasSkills
     ? `
     <h2>Habilidades</h2>
-    <div class="skills-list">
-      ${extractedData.skills.map((s) => `<span class="skill">${escapeHtml(s)}</span>`).join('')}
-    </div>
+    <ul class="skills-list">
+      ${skills.map((s) => `<li class="skill-item">${escapeHtml(s)}</li>`).join('')}
+    </ul>
   `
     : '<h2>Habilidades</h2><p class="section-text">Habilidades não identificadas na extração do currículo.</p>'}
 

@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
       (analysis.extractedData.summary && analysis.extractedData.summary.trim().length > 0) ||
       (analysis.extractedData.experience && analysis.extractedData.experience.length > 0) ||
       (analysis.extractedData.education && analysis.extractedData.education.length > 0) ||
-      (analysis.extractedData.skills && analysis.extractedData.skills.length > 0);
+      (analysis.extractedData.skills && analysis.extractedData.skills.length > 0) ||
+      (analysis.correctedResume.suggestedKeywords && analysis.correctedResume.suggestedKeywords.length > 0);
 
     if (!hasExtractedContent) {
       return NextResponse.json(
