@@ -30,12 +30,13 @@ INSTRUÇÕES DE EXTRAÇÃO:
   * Dados pessoais (nome, email, telefone, LinkedIn, localização)
   * Resumo profissional ou objetivo
   * Experiência profissional (empresa, cargo, datas, responsabilidades, conquistas)
-  * Educação (instituição, grau, área, ano de conclusão)
+  * Educação: APENAS ensino acadêmico formal (Ensino Médio, Técnico, Tecnólogo, Bacharelado, Licenciatura, Mestrado, Doutorado).
+  * Certificações/Cursos: Cursos livres, Udemy, Alura, bootcamps, workshops e certificações de TI devem ir APENAS para o array 'certifications' (NUNCA em educação).
   * Habilidades/skills (técnicas e comportamentais)
-  * Certificações (cursos, diplomas especializados)
   * Idiomas (idioma e nível de proficiência)
 - Se o layout for confuso, reconstrua a seção pelo contexto (ex: se vir empresa-cargo-datas juntos, é experiência).
 - NÃO deixe campos vazios se houver conteúdo correspondente no currículo. Exemplo: se há "Experiência: Desenvolvedor na Empresa XYZ de 01/2020 a 12/2023", OBRIGATORIAMENTE extraia isso; não retorne experience: [].
+- Se houver GitHub, extraia a URL completa no campo github.
 
 CURRÍCULO:
 """
@@ -59,6 +60,7 @@ Retorne APENAS este JSON (formato exato):
     "email": "<email ou empty string>",
     "phone": "<telefone ou empty string>",
     "linkedin": "<URL LinkedIn ou null>",
+    "github": "<URL GitHub ou null>",
     "location": "<cidade/país ou empty string>",
     "birthDate": "<YYYY-MM-DD se disponível, senão empty string>",
     "age": "<idade em anos como número ou null>",
@@ -77,12 +79,12 @@ Retorne APENAS este JSON (formato exato):
     "education": [
       {
         "institution": "<instituição>",
-        "degree": "<grau - Bachelor/Master/PhD>",
+        "degree": "<grau - APENAS ensino formal: Tecnólogo/Bachelor/Master/PhD/Técnico>",
         "field": "<área de estudo>",
-        "graduationYear": "<YYYY>"
+        "graduationYear": "<YYYY ou Em andamento quando não concluído>"
       }
     ],
-    "certifications": ["<certificação1>", "<certificação2>"],
+    "certifications": ["<cursos livres, bootcamps ou certificações>", "<ex: Curso de Node.js na Udemy>"],
     "languages": [
       {
         "language": "<idioma>",
@@ -100,8 +102,8 @@ Retorne APENAS este JSON (formato exato):
         "endDate": "<MM/YYYY ou Atual ou Presente>",
         "description": "<descrição>",
         "bulletPoints": [
-          "<• Verbo forte + resultado mensurável ex: Aumentei vendas 30%>",
-          "<• Ação + métrica ex: Liderou equipe de 5 pessoas>"
+          "<• Reescreva as conquistas usando formato ATS: Verbo Forte + Tarefa + Resultado Mensurável (se houver)>",
+          "<• IMPORTANTE: Baseie-se EXCLUSIVAMENTE nas informações do currículo. NÃO INVENTE MÉTRICAS, ferramentas ou habilidades que não estejam presentes lá.>"
         ]
       }
     ],

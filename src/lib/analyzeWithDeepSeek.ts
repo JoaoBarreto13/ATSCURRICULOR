@@ -137,7 +137,7 @@ function normalizeEducation(value: unknown): Education[] {
       const field = normalizeString(candidate.field);
       const graduationYear = normalizeString(candidate.graduationYear);
 
-      if (!institution && !degree && !field) {
+      if (!institution && !degree && !field && !graduationYear) {
         return null;
       }
 
@@ -187,6 +187,7 @@ function normalizeAnalysis(raw: PartialAnalysis): AnalysisResult {
       email: normalizeString(extractedData.email),
       phone: normalizeString(extractedData.phone),
       linkedin: extractedData.linkedin === null ? null : normalizeString(extractedData.linkedin),
+      github: extractedData.github === null ? null : normalizeString(extractedData.github),
       location: normalizeString(extractedData.location),
       birthDate: normalizeString(extractedData.birthDate),
       age: typeof extractedData.age === 'number' ? extractedData.age : undefined,

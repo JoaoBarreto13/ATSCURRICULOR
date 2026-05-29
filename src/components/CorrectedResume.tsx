@@ -1,15 +1,6 @@
 import { AnalysisResult, CorrectedResume as CR, ExtractedData, Education } from '@/types/resume';
-import { getResumeSkills } from '@/lib/resumeSkills';
-
-function formatEducationItem(education: Education): string {
-  const degreeLabel = [education.degree, education.field ? `em ${education.field}` : '']
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  const graduationLabel = education.graduationYear?.trim() ? education.graduationYear.trim() : 'Em andamento';
-
-  return `${degreeLabel || 'Formação'} — ${education.institution || 'Instituição não informada'} (${graduationLabel})`;
-}
+import { useEffect, useState } from 'react';
+import { formatEducationLabel } from '@/lib/resumeDisplay';
 
 function splitSkills(text: string): string[] {
   return text
@@ -27,13 +18,26 @@ export function CorrectedResume({
 }) {
   const { extractedData, correctedResume } = analysisResult;
   const summary = correctedResume.summary || extractedData.summary;
-  const experienceItems =
-    correctedResume.experienceRewritten.length > 0
-      ? correctedResume.experienceRewritten
-      : extractedData.experience;
-  const displayedSkills = extractedData.skills.length > 0
-    ? extractedData.skills
-    : correctedResume.suggestedKeywords;
+  
+  // Utiliza os metadados (cargo, empresa, datas) estritamente do currículo original,
+  // mas as "Responsabilidades / Conquistas" vêm da IA (se geradas) para ficarem formatadas para ATS.
+  const experienceItems = (extractedData.experience || []).map((exp, idx) => {
+    const correctedExp = correctedResume.experienceRewritten?.[idx];
+    const bulletPoints = correctedExp?.bulletPoints?.length 
+      ? correctedExp.bulletPoints 
+      : exp.bulletPoints || [];
+
+    return {
+      ...exp,
+      bulletPoints,
+    };
+  });
+
+  const [skillsText, setSkillsText] = useState(extractedData.skills.join(', '));
+
+  useEffect(() => {
+    setSkillsText(extractedData.skills.join(', '));
+  }, [extractedData.skills]);
 
   const updateAnalysis = (nextExtractedData: ExtractedData, nextCorrectedResume: CR = correctedResume) => {
     onChange({
@@ -57,9 +61,17 @@ export function CorrectedResume({
   };
 
   const updateSkills = (value: string) => {
+    setSkillsText(value);
     updateAnalysis({
       ...extractedData,
       skills: splitSkills(value),
+    });
+  };
+
+  const updateGithub = (value: string) => {
+    updateAnalysis({
+      ...extractedData,
+      github: value.trim(),
     });
   };
 
@@ -72,6 +84,75 @@ export function CorrectedResume({
       ...extractedData,
       education: nextEducation,
     });
+  };
+
+  const updateExperienceField = (
+    index: number,
+    field: keyof typeof experienceItems[number],
+    value: string,
+  ) => {
+    // Atualiza apenas os metadados no extractedData
+    const nextExperience = (extractedData.experience || []).map((exp, currentIndex) =>
+      currentIndex === index ? { ...exp, [field]: value } : exp,
+    );
+
+    updateAnalysis(
+      {
+        ...extractedData,
+        experience: nextExperience,
+      },
+      correctedResume // Não alteramos a IA base (correctedResume) para metadados
+    );
+  };
+
+  const updateExperienceBulletPoints = (index: number, value: string) => {
+    const bullets = value
+      .split(/\n|\r\n/)
+      .map((b) => b.replace(/^•\s*/, '').trim())
+      .filter(Boolean);
+
+    // Se houver bulletPoints editados, atualizamos *apenas* a versão corrigida (correctedResume),
+    // para que esses bullets sejam a nova base exibida e exportada
+    const nextCorrectedExperience = [...(correctedResume.experienceRewritten || [])];
+    
+    // Garantir que a entidade existe no index
+    if (!nextCorrectedExperience[index]) {
+      const baseExp = extractedData.experience[index];
+      nextCorrectedExperience[index] = { ...baseExp, bulletPoints: bullets };
+    } else {
+      nextCorrectedExperience[index] = { ...nextCorrectedExperience[index], bulletPoints: bullets };
+    }
+
+    updateAnalysis(
+      extractedData,
+      {
+        ...correctedResume,
+        experienceRewritten: nextCorrectedExperience,
+      }
+    );
+  };
+
+  const addExperience = () => {
+    const defaultExp = { company: '', role: '', startDate: '', endDate: '', bulletPoints: [] };
+    const nextExperience = [...(extractedData.experience || []), defaultExp];
+    
+    // Adiciona array dummy no correctedResume para alinhar o índice
+    const nextCorrectedExperience = [...(correctedResume.experienceRewritten || []), defaultExp];
+
+    updateAnalysis(
+      { ...extractedData, experience: nextExperience },
+      { ...correctedResume, experienceRewritten: nextCorrectedExperience }
+    );
+  };
+
+  const removeExperience = (index: number) => {
+    const nextExperience = (extractedData.experience || []).filter((_, i) => i !== index);
+    const nextCorrectedExperience = (correctedResume.experienceRewritten || []).filter((_, i) => i !== index);
+
+    updateAnalysis(
+      { ...extractedData, experience: nextExperience },
+      { ...correctedResume, experienceRewritten: nextCorrectedExperience }
+    );
   };
 
   const addEducation = () => {
@@ -120,20 +201,106 @@ export function CorrectedResume({
       </div>
 
       <div>
-        <h3 className="font-semibold text-gray-900">Experiência</h3>
+        <label className="block font-semibold text-gray-900 mb-2" htmlFor="resume-github">
+          GitHub
+        </label>
+        <input
+          id="resume-github"
+          value={extractedData.github || ''}
+          onChange={(event) => updateGithub(event.target.value)}
+          className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          placeholder="https://github.com/seu-perfil"
+        />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-gray-900">Experiência</h3>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={addExperience}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              + Adicionar experiência
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-3 mt-2">
           {experienceItems.length > 0 ? experienceItems.map((exp, i) => (
-            <div key={`${exp.company}-${exp.role}-${i}`} className="p-3 border rounded-md bg-gray-50">
-              <div className="font-semibold">{exp.role} — {exp.company}</div>
-              <div className="text-xs text-gray-500 mb-2">{exp.startDate} — {exp.endDate}</div>
-              <ul className="list-disc pl-5 text-sm">
-                {(exp.bulletPoints || []).map((bp, j) => (
-                  <li key={j}>{bp.replace(/^•\s*/, '')}</li>
-                ))}
-              </ul>
+            <div key={i} className="rounded-lg border border-gray-200 p-4 bg-gray-50 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-gray-700">Experiência {i + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => removeExperience(i)}
+                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                >
+                  Remover
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="mb-1 block text-gray-600">Cargo</span>
+                  <input
+                    value={exp.role}
+                    onChange={(event) => updateExperienceField(i, 'role', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-gray-600">Empresa</span>
+                  <input
+                    value={exp.company}
+                    onChange={(event) => updateExperienceField(i, 'company', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-gray-600">Início</span>
+                  <input
+                    value={exp.startDate}
+                    onChange={(event) => updateExperienceField(i, 'startDate', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder="Ex.: 01/2022"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-gray-600">Término</span>
+                  <input
+                    value={exp.endDate}
+                    onChange={(event) => updateExperienceField(i, 'endDate', event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder="Ex.: Presente"
+                  />
+                </label>
+                <label className="block text-sm md:col-span-2">
+                  <span className="mb-1 block text-gray-600">Responsabilidades / Conquistas (uma por linha)</span>
+                  <textarea
+                    value={(exp.bulletPoints || []).join('\n')}
+                    onChange={(event) => updateExperienceBulletPoints(i, event.target.value)}
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder="- Implementou...\n- Melhorou..."
+                  />
+                </label>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Prévia:</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {(exp.bulletPoints || []).map((bp, j) => (
+                    <li key={j}>{bp.replace(/^•\s*/, '')}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )) : (
-            <p className="text-sm text-gray-500">Experiência não identificada na extração do currículo.</p>
+            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+              Experiência não identificada na extração do currículo.
+            </div>
           )}
         </div>
       </div>
@@ -151,7 +318,7 @@ export function CorrectedResume({
         </div>
         <div className="space-y-3">
           {extractedData.education.length > 0 ? extractedData.education.map((edu, i) => (
-            <div key={`${edu.institution}-${edu.degree}-${i}`} className="rounded-lg border border-gray-200 p-4 bg-gray-50 space-y-3">
+            <div key={i} className="rounded-lg border border-gray-200 p-4 bg-gray-50 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-gray-700">Formação {i + 1}</p>
                 <button
@@ -197,7 +364,7 @@ export function CorrectedResume({
                   />
                 </label>
               </div>
-              <p className="text-xs text-gray-500">Prévia: {formatEducationItem(edu)}</p>
+              <p className="text-xs text-gray-500">Prévia: {formatEducationLabel(edu)}</p>
             </div>
           )) : (
             <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
@@ -213,14 +380,14 @@ export function CorrectedResume({
         </label>
         <textarea
           id="resume-skills"
-          value={displayedSkills.join(', ')}
+          value={skillsText}
           onChange={(event) => updateSkills(event.target.value)}
           rows={3}
           className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           placeholder="Liste as habilidades separadas por vírgula ou por linha"
         />
         <div className="mt-3 flex flex-wrap gap-2">
-          {displayedSkills.length > 0 ? displayedSkills.map((skill, i) => (
+          {splitSkills(skillsText).length > 0 ? splitSkills(skillsText).map((skill, i) => (
             <span key={`${skill}-${i}`} className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">
               {skill}
             </span>

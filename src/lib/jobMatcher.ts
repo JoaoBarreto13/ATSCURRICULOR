@@ -156,6 +156,18 @@ function checkAgeCompatibility(
 }
 
 /**
+ * Mapeia o grau de educação para um nível numérico (para comparação)
+ */
+function getEducationRank(degree: string): number {
+  const norm = degree.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  if (norm.includes('phd') || norm.includes('doutorado')) return 4;
+  if (norm.includes('master') || norm.includes('mestrado')) return 3;
+  if (norm.includes('bachelor') || norm.includes('bacharel') || norm.includes('tecnologo') || norm.includes('licenciatura')) return 2;
+  if (norm.includes('tecnico')) return 1;
+  return 0;
+}
+
+/**
  * Verifica compatibilidade de educação
  */
 function checkEducationMatch(
@@ -164,21 +176,17 @@ function checkEducationMatch(
 ): boolean {
   if (!requiredLevel) return true;
 
-  const educationLevels = ['Técnico', 'Bachelor', 'Master', 'PhD'];
-  const requiredIndex = educationLevels.indexOf(requiredLevel);
+  const reqRanks: Record<string, number> = {
+    'Técnico': 1,
+    'Bachelor': 2,
+    'Master': 3,
+    'PhD': 4,
+  };
 
-  if (requiredIndex === -1) return true;
+  const requiredRank = reqRanks[requiredLevel] || 0;
+  if (requiredRank === 0) return true;
 
-  const hasHigherOrEqual = education.some((edu) => {
-    const eduNormalized = edu.toLowerCase();
-    return educationLevels.some(
-      (level, idx) =>
-        idx >= requiredIndex &&
-        eduNormalized.includes(level.toLowerCase()),
-    );
-  });
-
-  return hasHigherOrEqual;
+  return education.some((edu) => getEducationRank(edu) >= requiredRank);
 }
 
 /**

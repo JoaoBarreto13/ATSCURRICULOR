@@ -1,18 +1,29 @@
 import { AnalysisResult } from '@/types/resume';
-import { getResumeSkills } from './resumeSkills';
+import { formatContactLine, formatEducationLabel } from './resumeDisplay';
 
 /**
  * Gera HTML ATS-friendly a partir dos dados do currículo corrigido
  */
 export function generateHtml(data: AnalysisResult): string {
   const { extractedData, correctedResume } = data;
+  // Use IA-generated summary when available for ATS optimization;
+  // Combine extractedData metadata (role/company/date) with correctedResume bulletPoints
+  // so that the generated ATS bullets are exported, but original positions aren't lost/changed.
   const summary = correctedResume.summary || extractedData.summary;
-  const experienceItems =
-    correctedResume.experienceRewritten.length > 0
-      ? correctedResume.experienceRewritten
-      : extractedData.experience;
+  const correctedExp = correctedResume.experienceRewritten || [];
+  const experienceItems = (extractedData.experience || []).map((exp, idx) => {
+    const corrected = correctedExp[idx] || {};
+    const bulletPoints = (corrected.bulletPoints && corrected.bulletPoints.length > 0)
+      ? corrected.bulletPoints
+      : (exp.bulletPoints || []);
+
+    return {
+      ...exp,
+      bulletPoints,
+    };
+  });
   const hasEducation = extractedData.education.length > 0;
-  const skills = getResumeSkills(data);
+  const skills = extractedData.skills;
   const hasSkills = skills.length > 0;
   const hasCertifications = extractedData.certifications.length > 0;
   const hasLanguages = extractedData.languages.length > 0;
@@ -46,8 +57,11 @@ export function generateHtml(data: AnalysisResult): string {
     .job-meta { font-size: 10pt; color: #444; margin-bottom: 4px; }
     ul { padding-left: 18px; }
     li { margin-bottom: 3px; line-height: 1.5; }
-    .skills-list { margin: 0; padding-left: 18px; }
-    .skill-item { margin-bottom: 4px; font-size: 10pt; }
+    .skills-list {
+      font-size: 10pt;
+      color: #111;
+      line-height: 1.5;
+    }
     .section-text { font-size: 10pt; color: #333; }
   </style>
 </head>
@@ -55,9 +69,7 @@ export function generateHtml(data: AnalysisResult): string {
 
   <h1>${escapeHtml(extractedData.name)}</h1>
   <div class="contact">
-    ${escapeHtml(extractedData.email)} | ${escapeHtml(extractedData.phone)} | ${escapeHtml(extractedData.location)}
-    ${extractedData.linkedin ? ` | ${escapeHtml(extractedData.linkedin)}` : ''}
-    ${extractedData.age ? ` | ${extractedData.age} anos` : ''}
+    ${escapeHtml(formatContactLine(extractedData))}
   </div>
 
   <h2>Resumo Profissional</h2>
@@ -85,7 +97,7 @@ export function generateHtml(data: AnalysisResult): string {
     ? extractedData.education
     .map(
       (edu) =>
-        `<p><strong>${escapeHtml(edu.degree)} em ${escapeHtml(edu.field)}</strong> — ${escapeHtml(edu.institution)} (${escapeHtml(edu.graduationYear)})</p>`
+        `<p><strong>${escapeHtml(formatEducationLabel(edu))}</strong></p>`
     )
     .join('')
     : '<p class="section-text">Educação não identificada na extração do currículo.</p>'}
@@ -93,9 +105,7 @@ export function generateHtml(data: AnalysisResult): string {
   ${hasSkills
     ? `
     <h2>Habilidades</h2>
-    <ul class="skills-list">
-      ${skills.map((s) => `<li class="skill-item">${escapeHtml(s)}</li>`).join('')}
-    </ul>
+    <p class="skills-list">${skills.map((s) => escapeHtml(s)).join(', ')}</p>
   `
     : '<h2>Habilidades</h2><p class="section-text">Habilidades não identificadas na extração do currículo.</p>'}
 

@@ -31,6 +31,7 @@ export interface ExtractedData {
   email: string;
   phone: string;
   linkedin: string | null;
+  github?: string | null;
   location: string;
   birthDate?: string; // YYYY-MM-DD
   age?: number;

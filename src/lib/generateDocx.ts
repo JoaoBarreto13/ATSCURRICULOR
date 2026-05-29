@@ -4,21 +4,24 @@ import {
   HeadingLevel,
   Packer,
   Paragraph,
+  Table,
   TextRun,
 } from 'docx';
 import { AnalysisResult } from '@/types/resume';
-import { getResumeSkills } from './resumeSkills';
-
-function formatEducationLabel(graduationYear: string): string {
-  const value = graduationYear.trim();
-  return value || 'Em andamento';
-}
+import { formatContactLine, formatEducationLabel } from './resumeDisplay';
 
 function createSectionHeading(title: string): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
     children: [new TextRun({ text: title, bold: true })],
     spacing: { before: 240, after: 120 },
+  });
+}
+
+function createTextParagraph(text: string, bold = false): Paragraph {
+  return new Paragraph({
+    children: [new TextRun({ text, bold })],
+    spacing: { after: 80 },
   });
 }
 
@@ -30,23 +33,34 @@ function createBullet(text: string): Paragraph {
   });
 }
 
-function createTextParagraph(text: string, bold = false): Paragraph {
-  return new Paragraph({
-    children: [new TextRun({ text, bold })],
-    spacing: { after: 80 },
-  });
+function createSkillsParagraph(skills: string[]): Paragraph {
+  return createTextParagraph(skills.join(', '));
 }
 
 export async function generateDocxBuffer(data: AnalysisResult): Promise<Buffer> {
   const { extractedData, correctedResume } = data;
+  // Use the IA-generated summary when available (it's ATS-optimized),
+  // but do NOT allow correctedResume to replace factual fields like role/company in experience.
+  // We use the correctedResume bulletPoints since they are optimized for ATS.
   const summary = correctedResume.summary || extractedData.summary;
-  const experienceItems =
-    correctedResume.experienceRewritten.length > 0
-      ? correctedResume.experienceRewritten
-      : extractedData.experience;
-  const skills = getResumeSkills(data);
+  const correctedExp = correctedResume.experienceRewritten || [];
+  const experienceItems = extractedData.experience.map((exp, idx) => {
+    const corrected = correctedExp[idx] || {};
+    const bulletPoints = (corrected.bulletPoints && corrected.bulletPoints.length > 0)
+      ? corrected.bulletPoints
+      : (exp.bulletPoints || []);
 
-  const children: Paragraph[] = [
+    return {
+      company: exp.company,
+      role: exp.role,
+      startDate: exp.startDate,
+      endDate: exp.endDate,
+      bulletPoints,
+    };
+  });
+  const skills = extractedData.skills;
+
+  const children: Array<Paragraph | Table> = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
@@ -63,14 +77,7 @@ export async function generateDocxBuffer(data: AnalysisResult): Promise<Buffer> 
       spacing: { after: 120 },
       children: [
         new TextRun({
-          text: [
-            extractedData.email,
-            extractedData.phone,
-            extractedData.location,
-            extractedData.linkedin,
-          ]
-            .filter(Boolean)
-            .join(' | '),
+          text: formatContactLine(extractedData),
           size: 20,
         }),
       ],
@@ -98,16 +105,7 @@ export async function generateDocxBuffer(data: AnalysisResult): Promise<Buffer> 
   children.push(createSectionHeading('Educação'));
   if (extractedData.education.length > 0) {
     extractedData.education.forEach((education) => {
-      const degree = [education.degree, education.field ? `em ${education.field}` : '']
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-      const graduationYear = formatEducationLabel(education.graduationYear || '');
-      children.push(
-        createTextParagraph(
-          `${degree || 'Formação'} — ${education.institution || 'Instituição não informada'} (${graduationYear})`,
-        ),
-      );
+      children.push(createTextParagraph(formatEducationLabel(education)));
     });
   } else {
     children.push(createTextParagraph('Educação não identificada na extração do currículo.'));
@@ -115,9 +113,7 @@ export async function generateDocxBuffer(data: AnalysisResult): Promise<Buffer> 
 
   children.push(createSectionHeading('Habilidades'));
   if (skills.length > 0) {
-    skills.forEach((skill) => {
-      children.push(createBullet(skill));
-    });
+    children.push(createSkillsParagraph(skills));
   } else {
     children.push(createTextParagraph('Habilidades não identificadas na extração do currículo.'));
   }
